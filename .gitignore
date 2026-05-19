@@ -1,0 +1,48 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# CrewAI / local runtime storage
+.crewai-storage/
+crewai_storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis / local data
+dump.rdb
+
+# Logs
+*.log
+logs/
+
+# OS and editor files
+.DS_Store
+app/.DS_Store
+.vscode/
+.idea/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Streamlit local config
+.streamlit/secrets.toml

@@ -1,0 +1,149 @@
+---
+query: "create sequence diagram for these "
+references:
+  - "File: /app"
+  - "File: /tests"
+  - "File: /venv"
+  - "File: /.crewai-storage"
+  - "File: /.crewai-storage/.crewai_user.json"
+  - "File: /streamlit_app.py"
+  - "File: /.env"
+  - "File: /app/crews/research_crew.py"
+  - "File: /app/agent.py"
+  - "File: /app/session.py"
+  - "File: /app/crews/analysis_crew.py"
+  - "File: /tests/test_research_crew.py"
+  - "File: /requirements.txt"
+  - "File: /app/schemas.py"
+  - "File: /app/main.py"
+  - |+
+    Reference: <instructions>
+    Here is a list of instruction files that contain rules for working with this codebase.
+    These files are important for understanding the codebase structure, conventions, and best practices.
+    When an instruction file applies to your task (based on its description or applyTo pattern), follow the rules specified in it.
+    If the file content is not already included in the context, use the #tool:read/readFile tool to read it before proceeding. Use the exact value from the <file> element as-is with the tool; do not add or remove prefixes or otherwise modify it.
+    Only load instruction files when they are relevant to the current task. Do not eagerly load all instructions upfront.
+    When modifying or creating files, check for instructions whose applyTo pattern matches the file path and follow them.
+    <instruction>
+    <file>vscode-userdata:/Users/madishetti.thapaswi/Library/Application%20Support/Code/User/prompts/snyk_rules.instructions.md</file>
+    </instruction>
+    <instruction>
+    <file>/var/folders/s_/97b2jznd5t57vrvhcddbt0s80000gp/T/postman-collections-post-response.instructions.md</file>
+    <applyTo>**/*-post-c-pm-*</applyTo>
+    </instruction>
+    <instruction>
+    <file>/var/folders/s_/97b2jznd5t57vrvhcddbt0s80000gp/T/postman-collections-pre-request.instructions.md</file>
+    <applyTo>**/*-pre-c-pm-*</applyTo>
+    </instruction>
+    <instruction>
+    <file>/var/folders/s_/97b2jznd5t57vrvhcddbt0s80000gp/T/postman-folder-post-response.instructions.md</file>
+    <applyTo>**/*-post-f-pm-*</applyTo>
+    </instruction>
+    <instruction>
+    <file>/var/folders/s_/97b2jznd5t57vrvhcddbt0s80000gp/T/postman-folder-pre-request.instructions.md</file>
+    <applyTo>**/*-pre-f-pm-*</applyTo>
+    </instruction>
+    <instruction>
+    <file>/var/folders/s_/97b2jznd5t57vrvhcddbt0s80000gp/T/postman-http-request-post-response.instructions.md</file>
+    <applyTo>**/*-post-r-pm-*</applyTo>
+    </instruction>
+    <instruction>
+    <file>/var/folders/s_/97b2jznd5t57vrvhcddbt0s80000gp/T/postman-http-request-pre-request.instructions.md</file>
+    <applyTo>**/*-pre-r-pm-*</applyTo>
+    </instruction>
+    </instructions>
+
+
+    <skills>
+    Here is a list of skills that contain domain specific knowledge on a variety of topics.
+    Each skill comes with a description of the topic and a file path that contains the detailed instructions.
+    When a user asks you to perform a task that falls within the domain of a skill, use the #tool:read/readFile tool to acquire the full instructions from the file URI.
+    <skill>
+    <name>get-search-view-results</name>
+    <description>Get the current search results from the Search view in VS Code</description>
+    <file>/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/copilot/assets/prompts/skills/get-search-view-results/SKILL.md</file>
+    </skill>
+    <skill>
+    <name>agent-customization</name>
+    <description>**WORKFLOW SKILL** — Create, update, review, fix, or debug VS Code agent customization files (.instructions.md, .prompt.md, .agent.md, SKILL.md, copilot-instructions.md, AGENTS.md). USE FOR: saving coding preferences; troubleshooting why instructions/skills/agents are ignored or not invoked; configuring applyTo patterns; defining tool restrictions; creating custom agent modes or specialized workflows; packaging domain knowledge; fixing YAML frontmatter syntax. DO NOT USE FOR: general coding questions (use default agent); runtime debugging or error diagnosis; MCP server configuration (use MCP docs directly); VS Code extension development. INVOKES: file system tools (read/write customization files), ask-questions tool (interview user for requirements), subagents for codebase exploration. FOR SINGLE OPERATIONS: For quick YAML frontmatter fixes or creating a single file from a known pattern, edit the file directly — no skill needed.</description>
+    <file>/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/copilot/assets/prompts/skills/agent-customization/SKILL.md</file>
+    </skill>
+    </skills>
+
+
+    <agents>
+    Here is a list of agents that can be used when running a subagent.
+    Each agent has optionally a description with the agent's purpose and expertise. When asked to run a subagent, choose the most appropriate agent from this list.
+    Use the #tool:agent/runSubagent tool with the agent name to run the subagent.
+    <agent>
+    <name>Explore</name>
+    <description>Fast read-only codebase exploration and Q&A subagent. Prefer over manually chaining multiple search and file-reading operations to avoid cluttering the main conversation. Safe to call in parallel. Specify thoroughness: quick, medium, or thorough.</description>
+    <argumentHint>Describe WHAT you're looking for and desired thoroughness (quick/medium/thorough)</argumentHint>
+    </agent>
+    </agents>
+
+generationTime: 2026-05-07T21:34:32.408Z
+---
+sequenceDiagram
+    actor User
+    participant FastAPI as FastAPI<br/>/chat Endpoint
+    participant Session as ConversationalSession
+    participant Redis as Redis Store
+    participant Crew as Conversation Crew
+    participant Agent as Conversational<br/>Agent
+    participant ResearchCrew as Research Crew
+    participant AnalysisCrew as Analysis Crew
+
+    User->>FastAPI: POST /chat<br/>(session_id, message)
+    activate FastAPI
+    
+    FastAPI->>Session: new ConversationalSession<br/>(session_id)
+    activate Session
+    
+    Session->>Redis: get_history(session_id)
+    activate Redis
+    Redis-->>Session: conversation history
+    deactivate Redis
+    
+    Session->>Session: append user message<br/>to history
+    
+    Session->>Session: summarize if needed<br/>(turns > 20)
+    
+    Session->>Crew: create_conversation_crew()
+    activate Crew
+    
+    Crew->>Agent: kickoff_async(inputs)
+    activate Agent
+    
+    alt User asks for research
+        Agent->>ResearchCrew: research_workflow<br/>(query, context)
+        activate ResearchCrew
+        ResearchCrew-->>Agent: research result
+        deactivate ResearchCrew
+    else User provides data/numbers
+        Agent->>AnalysisCrew: data_analysis_workflow<br/>(dataset, question, context)
+        activate AnalysisCrew
+        AnalysisCrew-->>Agent: analysis result
+        deactivate AnalysisCrew
+    else Normal conversation
+        Agent->>Agent: generate response
+    end
+    
+    Agent-->>Crew: reply
+    deactivate Agent
+    
+    Crew-->>Session: crew result
+    deactivate Crew
+    
+    Session->>Session: append assistant reply<br/>to history
+    
+    Session->>Redis: save_history(session_id, history)<br/>TTL: 3600s
+    activate Redis
+    Redis-->>Session: saved
+    deactivate Redis
+    
+    Session-->>FastAPI: reply
+    deactivate Session
+    
+    FastAPI-->>User: ChatResponse<br/>(session_id, reply, status)
+    deactivate FastAPI

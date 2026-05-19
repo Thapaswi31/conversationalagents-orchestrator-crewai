@@ -46,3 +46,8 @@ dist/
 
 # Streamlit local config
 .streamlit/secrets.toml
+
+# Credentials
+Library/
+crewai/credentials/
+*.key

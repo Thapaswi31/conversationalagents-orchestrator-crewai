@@ -29,7 +29,8 @@ app/
     redis_store.py         Async Redis transcript store
 tests/                     Unit, integration, and deterministic E2E tests
 streamlit_app.py           Optional Streamlit frontend
-requirements.txt           Python dependencies
+pyproject.toml             Project metadata and dependencies
+uv.lock                    Locked dependency versions
 ```
 
 ## Requirements
@@ -39,12 +40,10 @@ requirements.txt           Python dependencies
 - OpenAI-compatible model configuration for CrewAI/LiteLLM
 - Serper API key for live research web search
 
-Install dependencies:
+Install dependencies using `uv`:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 ## Environment
@@ -165,7 +164,7 @@ Response:
 Start the FastAPI server first, then run:
 
 ```bash
-streamlit run streamlit_app.py
+uv run streamlit run streamlit_app.py
 ```
 
 The Streamlit app sends messages to `http://localhost:8000/chat`.
@@ -279,14 +278,15 @@ Safe to commit:
 - `app/`
 - `tests/`
 - `README.md`
-- `requirements.txt`
+- `pyproject.toml`
+- `uv.lock`
 - `.env.example`
 - `.gitignore`
 
 Do not commit:
 
 - `.env`
-- `venv/`
+- `.venv/`
 - `.crewai-storage/`
 - `__pycache__/`
 - local database files such as `*.db`, `*.sqlite`, `*.sqlite3`
@@ -316,19 +316,19 @@ These are already covered by `.gitignore`.
 Run all deterministic tests:
 
 ```bash
-venv/bin/python -m unittest discover tests
+uv run python -m unittest discover tests
 ```
 
 Run live research crew tests only when real API keys are configured:
 
 ```bash
-RUN_LIVE_RESEARCH_CREW=1 venv/bin/python -m unittest tests.test_research_crew_live
+RUN_LIVE_RESEARCH_CREW=1 uv run python -m unittest tests.test_research_crew_live
 ```
 
 Run live analysis crew tests:
 
 ```bash
-RUN_LIVE_ANALYSIS_CREW=1 venv/bin/python -m unittest tests.test_analysis_crew_live
+RUN_LIVE_ANALYSIS_CREW=1 uv run python -m unittest tests.test_analysis_crew_live
 ```
 
 The deterministic suite uses fakes for Redis, sessions, and crews where needed so normal CI-style runs do not depend on live LLM calls.

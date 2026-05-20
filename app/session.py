@@ -11,6 +11,7 @@ from litellm import acompletion
 
 from app.agent import conversational_agent
 from app.memory import redis_store
+from app import agents as agent_manager
 
 
 _APP_ROOT = Path(__file__).resolve().parents[1]
@@ -59,7 +60,7 @@ class ConversationalSession:
         self.crew_factory = crew_factory or self._create_conversation_crew
         self.summarizer = summarizer or summarize_history
 
-    async def process_message(self, message: str) -> str:
+    async def process_message(self, message: str, agent_id: str | None = None) -> str:
         history = await self.store.get_history(self.session_id)
         history.append({"role": "user", "content": message})
 
@@ -67,7 +68,35 @@ class ConversationalSession:
         conversation_window = self._last_turns(history, turns=10)
         tool_context_window = self._last_turns(history, turns=2)
 
-        crew = self.crew_factory()
+        # If an explicit agent_id is provided, instantiate a Crew that uses
+        # that agent. Otherwise use the configured crew_factory.
+        if agent_id:
+            definition = await agent_manager.get_agent_definition(agent_id)
+            if definition:
+                # instantiate a single-agent crew for this conversation
+                inst_agent = agent_manager.instantiate_agent_from_definition(definition)
+                task = Task(
+                    description=(
+                        "Recent conversation context:\n{conversation_context}\n\n"
+                        "Current user message:\n{user_message}\n\n"
+                        "{tool_context_instruction}\n\n"
+                        "Last 2 turns to pass to workflow tools when needed:\n"
+                        "{tool_context}\n\n"
+                        "IMPORTANT: Use attached tools when appropriate."
+                    ),
+                    expected_output="A helpful conversational reply to the user.",
+                    agent=inst_agent,
+                )
+                crew = Crew(
+                    agents=[inst_agent],
+                    tasks=[task],
+                    process=Process.sequential,
+                    verbose=True,
+                )
+            else:
+                crew = self.crew_factory()
+        else:
+            crew = self.crew_factory()
         result = await crew.kickoff_async(
             inputs={
                 "user_message": message,

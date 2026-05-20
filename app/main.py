@@ -10,6 +10,7 @@ from sse_starlette.sse import EventSourceResponse
 from app import schemas
 from app.memory import redis_store
 from app.session import ConversationalSession
+from app import agents as agent_manager
 
 
 SessionFactory = Callable[[str], ConversationalSession]
@@ -41,7 +42,11 @@ async def chat(request: schemas.ChatRequest) -> schemas.ChatResponse:
     session = _session_factory()(session_id)
 
     try:
-        reply = await session.process_message(request.message)
+        try:
+            reply = await session.process_message(request.message, agent_id=request.agent_id)
+        except TypeError:
+            # fallback for session implementations that expect only (message,)
+            reply = await session.process_message(request.message)
         return schemas.ChatResponse(session_id=session_id, reply=reply, status="ok")
     except Exception as exc:
         return schemas.ChatResponse(
@@ -64,9 +69,13 @@ async def stream_chat(session_id: str, message: str | None = None) -> EventSourc
                 "event": "progress",
                 "data": "Processing message.",
             }
-            try:
-                session = _session_factory()(session_id)
-                reply = await session.process_message(message)
+                try:
+                    session = _session_factory()(session_id)
+                    try:
+                        reply = await session.process_message(message)
+                    except TypeError:
+                        # fallback if older session expects only one arg
+                        reply = await session.process_message(message)
                 yield {
                     "event": "complete",
                     "data": reply,
@@ -85,6 +94,35 @@ async def stream_chat(session_id: str, message: str | None = None) -> EventSourc
         }
 
     return EventSourceResponse(events())
+
+
+@app.post("/agents", response_model=schemas.AgentCreateResponse)
+async def create_agent(request: schemas.AgentCreateRequest) -> schemas.AgentCreateResponse:
+    try:
+        definition = {
+            "role": request.role,
+            "goal": request.goal,
+            "backstory": request.backstory or "",
+            "tools": request.tools or [],
+        }
+        agent_id = await agent_manager.create_agent(definition)
+        return schemas.AgentCreateResponse(agent_id=agent_id, status="ok")
+    except Exception as exc:
+        return schemas.AgentCreateResponse(agent_id="", status="error")
+
+
+@app.get("/agents")
+async def list_agents() -> dict:
+    ids = await agent_manager.list_agent_ids()
+    return {"agents": ids}
+
+
+@app.get("/agents/{agent_id}")
+async def get_agent(agent_id: str) -> dict:
+    definition = await agent_manager.get_agent_definition(agent_id)
+    if not definition:
+        return {"status": "not_found"}
+    return {"status": "ok", "definition": definition}
 
 
 @app.delete("/chat/{session_id}")
